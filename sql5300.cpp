@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
 	DbEnv env(0U);
 	env.set_message_stream(&std::cout);
 	env.set_error_stream(&std::cerr);
-	env.open(envHome, DB_CREATE | DB_INIT_MPOOL, 0);
 
 	try {
 		env.open(envHome, DB_CREATE | DB_INIT_MPOOL, 0);
