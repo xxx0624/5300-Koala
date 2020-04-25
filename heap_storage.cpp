@@ -148,9 +148,24 @@ SlottedPage* HeapFile::get_new(void) {
     return page;
 }
 
-SlottedPage* HeapFile::get(BlockID block_id){}
+SlottedPage* HeapFile::get(BlockID block_id){
+    char block[DbBlock::BLOCK_SZ];
+    std::memset(block, 0, sizeof(block));
+    Dbt data(block, sizeof(block));
 
-void HeapFile::put(DbBlock *block){}
+    Dbt key(&block_id, sizeof(block_id));
+
+    SlottedPage* page = new SlottedPage(data, block_id, false);
+    this->db.get(nullptr, &key, &data, 0);
+
+    return page;
+}
+
+void HeapFile::put(DbBlock *block){
+	BlockID block_id = block->get_block_id();
+	dbt key(&block_id,sizeof(block_id));
+	this->db.put(nullptr, &key, block->get_block(), 0);
+}
 
 BlockIDs* HeapFile::block_ids(){}
 
