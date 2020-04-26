@@ -333,7 +333,9 @@ void HeapFile::create(void){
 }
 
 void HeapFile::drop(void){
-	
+	close();
+    	Db db(_DB_ENV, 0);
+    	db.remove(this->dbfilename.c_str(), nullptr, 0);
 }
 
 void HeapFile::open(void){
@@ -341,6 +343,8 @@ void HeapFile::open(void){
 }
 
 void HeapFile::close(void){
+	this->db.close(0);
+	this->closed = true;
 }
 
 
