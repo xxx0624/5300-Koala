@@ -7,7 +7,42 @@
 using namespace std;
 
 bool test_heap_storage(){
-	return false;
+	ColumnNames column_names;
+	column_names.push_back("a");
+	column_names.push_back("b");
+	ColumnAttributes column_attributes;
+	ColumnAttribute ca(ColumnAttribute::INT);
+	column_attributes.push_back(ca);
+	ca.set_data_type(ColumnAttribute::TEXT);
+	column_attributes.push_back(ca);
+    	HeapTable table1("_test_table", column_names, column_attributes);
+    	table1.create();
+/*    	cout << "create ok" << endl;
+   	 table1.drop();  // drop makes the object unusable because of BerkeleyDB restriction -- maybe want to fix this some day
+    	cout << "drop ok" << endl;
+
+    	HeapTable table("_test_data_cpp", column_names, column_attributes);
+   	 table.create_if_not_exists();
+    	cout << "create_if_not_exsts ok" << endl;
+
+    	ValueDict row;
+    	row["a"] = Value(12);
+    	row["b"] = Value("Hello!");
+    	cout << "try insert" <<endl;
+    	table.insert(&row);
+    	cout << "insert ok" << endl;
+    	Handles* handles = table.select();
+    	cout << "select ok " << handles->size() << endl;
+    	ValueDict *result = table.project((*handles)[0]);
+    	cout << "project ok" << endl;
+    	Value value = (*result)["a"];
+       	if (value.n != 12)
+    		return false;
+    	value = (*result)["b"];
+    	if (value.s != "Hello!")
+		return false;
+    	table.drop();	*/
+	return true;
 }
 //Slotted page stuff here
 // need del,get put, ids, get_header, has_room, slide
@@ -180,10 +215,10 @@ void HeapTable::create() {
 // Create table if not exist
 void HeapTable::create_if_not_exists() {
     try {
-        open();
+        this->open();
     }
     catch (DbException &e){
-        create();
+        this->file.create();
     }
 }
 
@@ -243,7 +278,19 @@ void  HeapTable::del(const Handle handle) {
 
 // Select handle from table
 Handles* HeapTable::select() {
-	return nullptr;
+	Handles* handles = new Handles();
+    BlockIDs* block_ids = file.block_ids();
+    for (auto const& block_id : *block_ids) {
+        SlottedPage* block = file.get(block_id);
+        RecordIDs* record_ids = block->ids();
+        for (auto const& record_id : *record_ids)
+            handles->push_back(Handle(block_id, record_id));
+        delete record_ids;
+        delete block;
+    }
+    delete block_ids;
+    return handles;
+
 }
 
 
@@ -265,10 +312,18 @@ Handles* HeapTable::select(const ValueDict* where) {
 
 
 ValueDict* HeapTable::project(Handle handle) {
-return nullptr;
+    BlockID block_id = handle.first;
+    RecordID record_id = handle.second;
+    SlottedPage* block = file.get(block_id);
+    Dbt* data = block->get(record_id);
+    ValueDict* row = unmarshal(data);
+
+    delete data;
+    return row;
 }
 
 ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names) {
+//for later sprint
 return nullptr;
 }
 
@@ -277,8 +332,23 @@ return nullptr;
 }
 
 Handle HeapTable::append(const ValueDict* row) {
-Handle tmp;
-return tmp;
+    Dbt *data = this->marshal(row);
+    SlottedPage *block = this->file.get(this->file.get_last_block_id());
+    RecordID record_id;
+
+    try{
+        record_id = block->add(data);
+    } catch(DbBlockNoRoomError &e) {
+
+        block = this->file.get_new();
+        record_id = block->add(data);
+    }
+    Handle handle(file.get_last_block_id(), record_id);
+    file.put(block);
+    delete data;
+    delete block;
+    return handle;
+    
 }
 
 
@@ -316,7 +386,7 @@ Dbt * HeapTable::marshal(const ValueDict * row) {
 
 
 ValueDict* HeapTable::unmarshal(Dbt* data) {
-
+//FIXME for later sprint
 return nullptr;
 }
 
