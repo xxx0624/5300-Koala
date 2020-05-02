@@ -277,11 +277,17 @@ int main(int argc, char *argv[]) {
         getline(cin, query);
         if (query.length() == 0)
             continue;  // blank line -- just skip
+        
         if (query == "quit")
             break;  // only way to get out
+        
         if (query == "test") {
-	
             cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+            continue;
+        }
+
+        if (query == "test2"){
+            cout << "test_slotted_page: " << (test_slotted_page() ? "ok" : "failed") << endl;
             continue;
         }
 

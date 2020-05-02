@@ -6,6 +6,111 @@
 #include <exception>
 using namespace std;
 
+/**
+ * Print out given failure message and return false.
+ * @param message reason for failure
+ * @return false
+ */
+bool assertion_failure(string message) {
+    cout << "FAILED TEST: " << message << endl;
+    return false;
+}
+
+/**
+ * Testing function for SlottedPage.
+ * @return true if testing succeeded, false otherwise 
+ */
+bool test_slotted_page() {
+    // construct one
+    char blank_space[DbBlock::BLOCK_SZ];
+    Dbt block_dbt(blank_space, sizeof(blank_space));
+    SlottedPage slot(block_dbt, 1, true);
+    // add a record
+    char rec1[] = "hello";
+    Dbt rec1_dbt(rec1, sizeof(rec1));
+    RecordID id = slot.add(&rec1_dbt);
+    if (id != 1)
+        return assertion_failure("add id 1");
+    // get it back
+    Dbt *get_dbt = slot.get(id);
+    string expected(rec1, sizeof(rec1));
+    string actual((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 1 back " + actual);
+    delete get_dbt;
+    // add another record and fetch it back
+    char rec2[] = "goodbye";
+    Dbt rec2_dbt(rec2, sizeof(rec2));
+    id = slot.add(&rec2_dbt);
+    if (id != 2)
+        return assertion_failure("add id 2");
+    // get it back
+    get_dbt = slot.get(id);
+    expected = string(rec2, sizeof(rec2));
+    actual = string((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 2 back " + actual);
+    delete get_dbt;
+    // test put with expansion (and slide and ids)
+    char rec1_rev[] = "something much bigger";
+    rec1_dbt = Dbt(rec1_rev, sizeof(rec1_rev));
+    slot.put(1, rec1_dbt);
+    // check both rec2 and rec1 after expanding put
+    get_dbt = slot.get(2);
+    expected = string(rec2, sizeof(rec2));
+    actual = string((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 2 back after expanding put of 1 " + actual);
+    delete get_dbt;
+    get_dbt = slot.get(1);
+    expected = string(rec1_rev, sizeof(rec1_rev));
+    actual = string((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 1 back after expanding put of 1 " + actual);
+    delete get_dbt;
+    // test put with contraction (and slide and ids)
+    rec1_dbt = Dbt(rec1, sizeof(rec1));
+    slot.put(1, rec1_dbt);
+    // check both rec2 and rec1 after contracting put
+    get_dbt = slot.get(2);
+    expected = string(rec2, sizeof(rec2));
+    actual = string((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 2 back after contracting put of 1 " + actual);
+    delete get_dbt;
+    get_dbt = slot.get(1);
+    expected = string(rec1, sizeof(rec1));
+    actual = string((char *) get_dbt->get_data(), get_dbt->get_size());
+    if (expected != actual)
+        return assertion_failure("get 1 back after contracting put of 1 " + actual);
+    delete get_dbt;
+    // test del (and ids)
+    RecordIDs *id_list = slot.ids();
+    if (id_list->size() != 2 || id_list->at(0) != 1 || id_list->at(1) != 2)
+        return assertion_failure("ids() with 2 records");
+    delete id_list;
+    slot.del(1);
+    id_list = slot.ids();
+    if (id_list->size() != 1 || id_list->at(0) != 2)
+        return assertion_failure("ids() with 1 record remaining");
+    delete id_list;
+    get_dbt = slot.get(1);
+    if (get_dbt != nullptr)
+        return assertion_failure("get of deleted record was not null");
+    // try adding something too big
+    rec2_dbt = Dbt(nullptr, DbBlock::BLOCK_SZ - 10); // too big, but only because we have a record in there
+    try {
+        slot.add(&rec2_dbt);
+        return assertion_failure("failed to throw when add too big");
+    } catch (const DbBlockNoRoomError &exc) {
+        // test succeeded - this is the expected path
+    } catch (...) {
+        // Note that this won't catch segfault signals -- but in that case we also know the test failed
+        return assertion_failure("wrong type thrown when add too big");
+    }
+    return true;
+}
+
 bool test_heap_storage(){
 	ColumnNames column_names;
 	column_names.push_back("a");
