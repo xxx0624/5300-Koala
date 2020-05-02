@@ -28,30 +28,30 @@ string operatorExpressionToString(const Expr *expr);
 string expressionToString(const Expr *expr) {
     string ret;
     switch (expr->type) {
-        case kExprStar:
-            ret += "*";
-            break;
-        case kExprColumnRef:
-            if (expr->table != NULL)
-                ret += string(expr->table) + ".";
-        case kExprLiteralString:
-            ret += expr->name;
-            break;
-        case kExprLiteralFloat:
-            ret += to_string(expr->fval);
-            break;
-        case kExprLiteralInt:
-            ret += to_string(expr->ival);
-            break;
-        case kExprFunctionRef:
-            ret += string(expr->name) + "?" + expr->expr->name;
-            break;
-        case kExprOperator:
-            ret += operatorExpressionToString(expr);
-            break;
-        default:
-            ret += "???";  // in case there are exprssion types we don't know about here
-            break;
+    case kExprStar:
+        ret += "*";
+        break;
+    case kExprColumnRef:
+        if (expr->table != NULL)
+            ret += string(expr->table) + ".";
+    case kExprLiteralString:
+        ret += expr->name;
+        break;
+    case kExprLiteralFloat:
+        ret += to_string(expr->fval);
+        break;
+    case kExprLiteralInt:
+        ret += to_string(expr->ival);
+        break;
+    case kExprFunctionRef:
+        ret += string(expr->name) + "?" + expr->expr->name;
+        break;
+    case kExprOperator:
+        ret += operatorExpressionToString(expr);
+        break;
+    default:
+        ret += "???";  // in case there are exprssion types we don't know about here
+        break;
     }
     if (expr->alias != NULL)
         ret += string(" AS ") + expr->alias;
@@ -77,17 +77,17 @@ string operatorExpressionToString(const Expr *expr) {
 
     // Operator itself
     switch (expr->opType) {
-        case Expr::SIMPLE_OP:
-            ret += expr->opChar;
-            break;
-        case Expr::AND:
-            ret += "AND";
-            break;
-        case Expr::OR:
-            ret += "OR";
-            break;
-        default:
-            break; // e.g., for NOT
+    case Expr::SIMPLE_OP:
+        ret += expr->opChar;
+        break;
+    case Expr::AND:
+        ret += "AND";
+        break;
+    case Expr::OR:
+        ret += "OR";
+        break;
+    default:
+        break; // e.g., for NOT
     }
 
     // Right-hand side of expression (only present for binary operators)
@@ -104,47 +104,47 @@ string operatorExpressionToString(const Expr *expr) {
 string tableRefInfoToString(const TableRef *table) {
     string ret;
     switch (table->type) {
-        case kTableSelect:
-            ret += "kTableSelect FIXME"; // FIXME
+    case kTableSelect:
+        ret += "kTableSelect FIXME"; // FIXME
+        break;
+    case kTableName:
+        ret += table->name;
+        if (table->alias != NULL)
+            ret += string(" AS ") + table->alias;
+        break;
+    case kTableJoin:
+        ret += tableRefInfoToString(table->join->left);
+        switch (table->join->type) {
+        case kJoinCross:
+        case kJoinInner:
+            ret += " JOIN ";
             break;
-        case kTableName:
-            ret += table->name;
-            if (table->alias != NULL)
-                ret += string(" AS ") + table->alias;
+        case kJoinOuter:
+        case kJoinLeftOuter:
+        case kJoinLeft:
+            ret += " LEFT JOIN ";
             break;
-        case kTableJoin:
-            ret += tableRefInfoToString(table->join->left);
-            switch (table->join->type) {
-                case kJoinCross:
-                case kJoinInner:
-                    ret += " JOIN ";
-                    break;
-                case kJoinOuter:
-                case kJoinLeftOuter:
-                case kJoinLeft:
-                    ret += " LEFT JOIN ";
-                    break;
-                case kJoinRightOuter:
-                case kJoinRight:
-                    ret += " RIGHT JOIN ";
-                    break;
-                case kJoinNatural:
-                    ret += " NATURAL JOIN ";
-                    break;
-            }
-            ret += tableRefInfoToString(table->join->right);
-            if (table->join->condition != NULL)
-                ret += " ON " + expressionToString(table->join->condition);
+        case kJoinRightOuter:
+        case kJoinRight:
+            ret += " RIGHT JOIN ";
             break;
-        case kTableCrossProduct:
-            bool doComma = false;
-            for (TableRef *tbl : *table->list) {
-                if (doComma)
-                    ret += ", ";
-                ret += tableRefInfoToString(tbl);
-                doComma = true;
-            }
+        case kJoinNatural:
+            ret += " NATURAL JOIN ";
             break;
+        }
+        ret += tableRefInfoToString(table->join->right);
+        if (table->join->condition != NULL)
+            ret += " ON " + expressionToString(table->join->condition);
+        break;
+    case kTableCrossProduct:
+        bool doComma = false;
+        for (TableRef *tbl : *table->list) {
+            if (doComma)
+                ret += ", ";
+            ret += tableRefInfoToString(tbl);
+            doComma = true;
+        }
+        break;
     }
     return ret;
 }
@@ -157,18 +157,18 @@ string tableRefInfoToString(const TableRef *table) {
 string columnDefinitionToString(const ColumnDefinition *col) {
     string ret(col->name);
     switch (col->type) {
-        case ColumnDefinition::DOUBLE:
-            ret += " DOUBLE";
-            break;
-        case ColumnDefinition::INT:
-            ret += " INT";
-            break;
-        case ColumnDefinition::TEXT:
-            ret += " TEXT";
-            break;
-        default:
-            ret += " ...";
-            break;
+    case ColumnDefinition::DOUBLE:
+        ret += " DOUBLE";
+        break;
+    case ColumnDefinition::INT:
+        ret += " INT";
+        break;
+    case ColumnDefinition::TEXT:
+        ret += " TEXT";
+        break;
+    default:
+        ret += " ...";
+        break;
     }
     return ret;
 }
@@ -232,14 +232,14 @@ string executeCreate(const CreateStatement *stmt) {
  */
 string execute(const SQLStatement *stmt) {
     switch (stmt->type()) {
-        case kStmtSelect:
-            return executeSelect((const SelectStatement *) stmt);
-        case kStmtInsert:
-            return executeInsert((const InsertStatement *) stmt);
-        case kStmtCreate:
-            return executeCreate((const CreateStatement *) stmt);
-        default:
-            return "Not implemented";
+    case kStmtSelect:
+        return executeSelect((const SelectStatement *) stmt);
+    case kStmtInsert:
+        return executeInsert((const InsertStatement *) stmt);
+    case kStmtCreate:
+        return executeCreate((const CreateStatement *) stmt);
+    default:
+        return "Not implemented";
     }
 }
 
@@ -259,13 +259,13 @@ int main(int argc, char *argv[]) {
     DbEnv env(0U);
     env.set_message_stream(&cout);
     env.set_error_stream(&cerr);
-	
+
     try {
-     
-	env.open(envHome, DB_CREATE | DB_INIT_MPOOL, 0);
+
+        env.open(envHome, DB_CREATE | DB_INIT_MPOOL, 0);
     } catch (DbException &exc) {
-     
-	cerr << "(sql5300: " << exc.what() << ")";
+
+        cerr << "(sql5300: " << exc.what() << ")";
         exit(1);
     }
     _DB_ENV = &env;
@@ -277,16 +277,16 @@ int main(int argc, char *argv[]) {
         getline(cin, query);
         if (query.length() == 0)
             continue;  // blank line -- just skip
-        
+
         if (query == "quit")
             break;  // only way to get out
-        
+
         if (query == "test") {
             cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
             continue;
         }
 
-        if (query == "test2"){
+        if (query == "test2") {
             cout << "test_slotted_page: " << (test_slotted_page() ? "ok" : "failed") << endl;
             continue;
         }
