@@ -32,5 +32,8 @@
 *.app
 sql5300
 
-## Astyle
+# Astyle
 *.orig
+
+# DB files
+*.db
