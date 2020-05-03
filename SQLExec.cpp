@@ -48,8 +48,10 @@ QueryResult::~QueryResult() {
 
 
 QueryResult *SQLExec::execute(const SQLStatement *statement) {
-    // FIXME: initialize _tables table, if not yet present
-
+    if(tables == nullptr){
+        tables = new Tables();
+    }
+    
     try {
         switch (statement->type()) {
             case kStmtCreate:
@@ -66,13 +68,45 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) {
     }
 }
 
-void
-SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute) {
-    throw SQLExecError("not implemented");  // FIXME
+void SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute) {
+    column_name = col->name;
+    switch (col->type){
+        case ColumnDefinition::INT:
+            column_attribute.set_data_type(ColumnAttribute::INT);
+            break;
+        case ColumnDefinition::TEXT:
+            column_attribute.set_data_type(ColumnAttribute::TEXT);
+            break;
+        default:
+            throw SQLExecError("not supported data type");
+    }
 }
 
 QueryResult *SQLExec::create(const CreateStatement *statement) {
-    return new QueryResult("not implemented"); // FIXME
+    Identifier table_name = statement->tableName;
+    //ColumnNames column_names;
+    //ColumnAttributes column_attributes;
+
+    DbRelation &column_table = tables->get_table(Columns::TABLE_NAME);
+    for (ColumnDefinition *col : *statement->columns) {
+        Identifier column_name;
+        ColumnAttribute column_attribute;
+        column_definition(col, column_name, column_attribute);
+        //column_names.push_back(column_name);
+        //column_attributes.push_back(column_attribute);
+        ValueDict row;
+        row["table_name"] = Value(table_name);
+        row["column_name"] = Value(column_name);
+        row["data_type"] = Value(column_attribute.get_data_type() == ColumnAttribute::INT?"INT":"TEXT");
+        column_table.insert(&row);
+    }
+    ValueDict row;
+    row["table_name"] = Value(table_name);
+    tables->insert(&row);
+    // creat table
+    DbRelation& table = tables->get_table(table_name);
+    table.create_if_not_exists();
+    return new QueryResult("created " + table_name);
 }
 
 // DROP ...
