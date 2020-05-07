@@ -108,8 +108,54 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
     return new QueryResult("created " + table_name);
 }
 
-QueryResult *SQLExec::drop(const DropStatement *statement) {
+bool SQLExec::table_exist(Identifier table_name){
+    QueryResult *query_result = show_tables();
+    ValueDicts *rows = query_result->get_rows();
+    bool res = false;
+    for(auto const &row : *rows){
+        if(row->at("table_name") == Value(table_name)){
+            res = true;
+            break;
+        }
+    }
+    delete query_result;
+    delete rows;
+    return res;
+}
 
+QueryResult *SQLExec::drop(const DropStatement *statement) {
+    Identifier table_name = statement->name;
+    if(table_name == Tables::TABLE_NAME){
+        return new QueryResult("can't drop _tables");
+    }
+    if(table_name == Columns::TABLE_NAME){
+        return new QueryResult("can't drop _columns");
+    }
+    if(!table_exist(table_name)){
+        return new QueryResult(table_name + " not exist");
+    }
+
+    DbRelation &table = tables->get_table(table_name);
+    DbRelation &column = tables->get_table(Columns::TABLE_NAME);
+    
+    ValueDict where;
+    where["table_name"] = Value(table_name);
+    // delete table from _columns
+    Handles *handles = column.select(&where);
+    for(Handle handle : *handles){
+        column.del(handle);
+    }
+    delete handles;
+    // delete table from DB
+    table.drop();
+    // delete table from _tables
+    handles = tables->select(&where);
+    for(Handle handle : *handles){
+        tables->del(handle);
+        break;// Delete only one table
+    }
+    delete handles;
+    return new QueryResult("drop " + table_name);
 }
 
 QueryResult *SQLExec::show(const ShowStatement *statement) {
