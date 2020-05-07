@@ -82,11 +82,9 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_
     }
 }
 
+// TODO: exceptions
 QueryResult *SQLExec::create(const CreateStatement *statement) {
     Identifier table_name = statement->tableName;
-    //ColumnNames column_names;
-    //ColumnAttributes column_attributes;
-
     DbRelation &column_table = tables->get_table(Columns::TABLE_NAME);
     for (ColumnDefinition *col : *statement->columns) {
         Identifier column_name;
@@ -100,18 +98,18 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
         row["data_type"] = Value(column_attribute.get_data_type() == ColumnAttribute::INT?"INT":"TEXT");
         column_table.insert(&row);
     }
+    // insert new table into _table
     ValueDict row;
     row["table_name"] = Value(table_name);
     tables->insert(&row);
-    // creat table
+    // creat new table & cache new table
     DbRelation& table = tables->get_table(table_name);
     table.create_if_not_exists();
     return new QueryResult("created " + table_name);
 }
 
-// DROP ...
 QueryResult *SQLExec::drop(const DropStatement *statement) {
-    return new QueryResult("not implemented"); // FIXME
+
 }
 
 QueryResult *SQLExec::show(const ShowStatement *statement) {
@@ -119,7 +117,21 @@ QueryResult *SQLExec::show(const ShowStatement *statement) {
 }
 
 QueryResult *SQLExec::show_tables() {
-    return new QueryResult("not implemented"); // FIXME
+    ColumnNames *col_names = new ColumnNames();
+    ColumnAttributes *col_attrs = new ColumnAttributes();
+    ValueDicts *rows = new ValueDicts();
+    tables->get_columns(Tables::TABLE_NAME, *col_names, *col_attrs);
+    Handles *handles = tables->select();
+    for(Handle handle : *handles){
+        ValueDict *row = tables->project(handle);
+        Value name = row->at("table_name");
+        if(name != Value(Tables::TABLE_NAME) && name != Value(Columns::TABLE_NAME)){
+            rows->push_back(row);
+        }
+    }
+    delete handles;
+    return new QueryResult(col_names, col_attrs, rows, 
+        "successfully fetch " + to_string(rows->size()) + " tables");
 }
 
 QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
