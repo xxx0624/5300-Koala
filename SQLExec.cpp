@@ -209,5 +209,20 @@ QueryResult *SQLExec::show_tables() {
 }
 
 QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
-    return new QueryResult("not implemented"); // FIXME
+    ColumnNames *col_names = new ColumnNames();
+    ColumnAttributes *col_attrs = new ColumnAttributes();
+    tables->get_columns(Columns::TABLE_NAME, *col_names, *col_attrs);
+
+    ValueDicts *rows = new ValueDicts();
+    DbRelation &column = tables->get_table(Columns::TABLE_NAME);
+    ValueDict where;
+    where["table_name"] = Value(statement->tableName);
+    Handles *handles = column.select(&where);
+    for(Handle handle : *handles){
+        ValueDict *row = column.project(handle, col_names);
+        rows->push_back(row);
+    }
+    delete handles;
+    return new QueryResult(col_names, col_attrs, rows, 
+        "successfully fetch " + to_string(rows->size()) + " rows");
 }
