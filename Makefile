@@ -33,3 +33,7 @@ storage_engine.o : storage_engine.h
 # Note that since it is not the first target, you have to invoke it explicitly: $ make clean
 clean:
 	rm -f sql5300 *.o
+
+delete:
+	rm *.db
+	rm __db.00*

@@ -43,7 +43,18 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
 }
 
 QueryResult::~QueryResult() {
-    // FIXME
+    if(column_names != nullptr){
+        delete column_names;
+    }
+    if(column_attributes != nullptr){
+        delete column_attributes;
+    }
+    if(rows != nullptr){
+        for(ValueDict *row : *rows){
+            delete row;
+        }
+        delete rows;
+    }
 }
 
 
@@ -82,57 +93,66 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_
     }
 }
 
-// TODO: exceptions
 QueryResult *SQLExec::create(const CreateStatement *statement) {
     Identifier table_name = statement->tableName;
-    DbRelation &column_table = tables->get_table(Columns::TABLE_NAME);
-    for (ColumnDefinition *col : *statement->columns) {
-        Identifier column_name;
-        ColumnAttribute column_attribute;
-        column_definition(col, column_name, column_attribute);
-        //column_names.push_back(column_name);
-        //column_attributes.push_back(column_attribute);
-        ValueDict row;
-        row["table_name"] = Value(table_name);
-        row["column_name"] = Value(column_name);
-        row["data_type"] = Value(column_attribute.get_data_type() == ColumnAttribute::INT?"INT":"TEXT");
-        column_table.insert(&row);
-    }
+
     // insert new table into _table
     ValueDict row;
     row["table_name"] = Value(table_name);
-    tables->insert(&row);
-    // creat new table & cache new table
-    DbRelation& table = tables->get_table(table_name);
-    table.create_if_not_exists();
+    Handle table_handle = tables->insert(&row);
+
+    Handles col_handles;
+    DbRelation *column_table = nullptr;
+    try{
+        column_table = &(tables->get_table(Columns::TABLE_NAME));
+        for (ColumnDefinition *col : *statement->columns) {
+            Identifier column_name;
+            ColumnAttribute column_attribute;
+            column_definition(col, column_name, column_attribute);
+            ValueDict row;
+            row["table_name"] = Value(table_name);
+            row["column_name"] = Value(column_name);
+            row["data_type"] = Value(column_attribute.get_data_type() == ColumnAttribute::INT?"INT":"TEXT");
+            col_handles.push_back(column_table->insert(&row));
+        }
+        // creat new table & cache new table
+        DbRelation& table = tables->get_table(table_name);
+        table.create_if_not_exists();
+    } catch (exception& e){
+        if(column_table != nullptr){
+            for(auto const &handle : col_handles){
+                column_table->del(handle);
+            }
+        }
+        tables->del(table_handle);
+        throw;
+    }
     return new QueryResult("created " + table_name);
 }
 
 bool SQLExec::table_exist(Identifier table_name){
     QueryResult *query_result = show_tables();
-    ValueDicts *rows = query_result->get_rows();
     bool res = false;
-    for(auto const &row : *rows){
+    for(auto const &row : *(query_result->get_rows())){
         if(row->at("table_name") == Value(table_name)){
             res = true;
             break;
         }
     }
     delete query_result;
-    delete rows;
     return res;
 }
 
 QueryResult *SQLExec::drop(const DropStatement *statement) {
     Identifier table_name = statement->name;
     if(table_name == Tables::TABLE_NAME){
-        return new QueryResult("can't drop _tables");
+        throw SQLExecError("can't drop _tables");
     }
     if(table_name == Columns::TABLE_NAME){
-        return new QueryResult("can't drop _columns");
+        throw SQLExecError("can't drop _columns");
     }
     if(!table_exist(table_name)){
-        return new QueryResult(table_name + " not exist");
+        throw SQLExecError(table_name + " not exist");
     }
 
     DbRelation &table = tables->get_table(table_name);
@@ -159,17 +179,25 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
 }
 
 QueryResult *SQLExec::show(const ShowStatement *statement) {
-    return new QueryResult("not implemented"); // FIXME
+    switch (statement->type){
+        case ShowStatement::kTables:
+            return show_tables();
+        case ShowStatement::kColumns:
+            return show_columns(statement);
+        default:
+            return new QueryResult("Not implemented");
+    }
 }
 
 QueryResult *SQLExec::show_tables() {
     ColumnNames *col_names = new ColumnNames();
     ColumnAttributes *col_attrs = new ColumnAttributes();
-    ValueDicts *rows = new ValueDicts();
     tables->get_columns(Tables::TABLE_NAME, *col_names, *col_attrs);
+
     Handles *handles = tables->select();
+    ValueDicts *rows = new ValueDicts();
     for(Handle handle : *handles){
-        ValueDict *row = tables->project(handle);
+        ValueDict *row = tables->project(handle, col_names);
         Value name = row->at("table_name");
         if(name != Value(Tables::TABLE_NAME) && name != Value(Columns::TABLE_NAME)){
             rows->push_back(row);

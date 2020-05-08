@@ -64,9 +64,9 @@ int main(int argc, char *argv[]) {
                 const SQLStatement *statement = parse->getStatement(i);
                 try {
                     cout << ParseTreeToString::statement(statement) << endl;
-                    // QueryResult *result = SQLExec::execute(statement);
-                    // cout << *result << endl;
-                    // delete result;
+                    QueryResult *result = SQLExec::execute(statement);
+                    cout << *result << endl;
+                    delete result;
                 } catch (SQLExecError &e) {
                     cout << "Error: " << e.what() << endl;
                 }
