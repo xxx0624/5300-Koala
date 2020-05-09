@@ -169,6 +169,9 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
     if(table_name == Columns::TABLE_NAME){
         throw SQLExecError("can't drop _columns");
     }
+    if(table_name == Indices::TABLE_NAME){
+        throw SQLExecError("can't drop _indices");
+    }
     if(!table_exist(table_name)){
         throw SQLExecError(table_name + " not exist");
     }
@@ -223,7 +226,7 @@ QueryResult *SQLExec::show_tables() {
     for(Handle handle : *handles){
         ValueDict *row = tables->project(handle, col_names);
         Value name = row->at("table_name");
-        if(name != Value(Tables::TABLE_NAME) && name != Value(Columns::TABLE_NAME)){
+        if(name != Value(Tables::TABLE_NAME) && name != Value(Columns::TABLE_NAME) && name != Value(Indices::TABLE_NAME)){
             rows->push_back(row);
         }
     }
