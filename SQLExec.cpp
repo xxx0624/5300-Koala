@@ -10,6 +10,7 @@ using namespace hsql;
 
 // define static data
 Tables *SQLExec::tables = nullptr;
+Indices *SQLExec::indices = nullptr;
 
 // make query result be printable
 ostream &operator<<(ostream &out, const QueryResult &qres) {
@@ -65,6 +66,9 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) {
     if(tables == nullptr){
         tables = new Tables();
     }
+    if(indices == nullptr){
+        indices = new Indices();
+    }
     
     try {
         switch (statement->type()) {
@@ -108,7 +112,43 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
 }
 
 QueryResult *SQLExec::create_index(const CreateStatement *statement) {
-    return new QueryResult("create index not implemented");  // FIXME
+    Identifier index_name = statement->indexName;
+	Identifier table_name = statement->tableName;
+
+	DbRelation& table = SQLExec::tables->get_table(table_name);
+	const ColumnNames& table_columns = table.get_column_names();
+	for (auto const& col_name : *statement->indexColumns) {
+		if (find(table_columns.begin(), table_columns.end(), col_name) == table_columns.end()) {
+			throw SQLExecError(string("column '" + string(col_name) + "' does not exist"));
+		}
+	}
+
+	ValueDict row;
+	row["table_name"] = Value(table_name);
+	row["index_name"] = Value(index_name);
+	row["index_type"] = Value(statement->indexType);
+	row["is_unique"] = Value(string(statement->indexType) == "BTREE");
+	int seq = 0;
+	Handles inHandles;
+	try {
+		for (auto const &col_name : *statement->indexColumns) {
+			row["seq_in_index"] = Value(++seq);
+			row["column_name"] = Value(col_name);
+			inHandles.push_back(SQLExec::indices->insert(&row));
+		}
+		DbIndex& index = SQLExec::indices->get_index(table_name, index_name);
+		index.create();
+	}
+	catch (...) {
+		try {
+			for (auto const &handle : inHandles) {
+				SQLExec::indices->del(handle);
+			}
+		}
+		catch (...) {}
+		throw;
+	}
+	return new QueryResult("created index " + index_name);
 }
 
 QueryResult *SQLExec::create_table(const CreateStatement *statement) {
@@ -145,7 +185,7 @@ QueryResult *SQLExec::create_table(const CreateStatement *statement) {
         tables->del(table_handle);
         throw;
     }
-    return new QueryResult("created " + table_name);
+    return new QueryResult("created table " + table_name);
 }
 
 bool SQLExec::table_exist(Identifier table_name){
