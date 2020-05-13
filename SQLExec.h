@@ -82,6 +82,8 @@ protected:
 
     static QueryResult *drop_index(const hsql::DropStatement *statement);
 
+    static void drop_index(Identifier table_name, Identifier index_name);
+
     static QueryResult *show(const hsql::ShowStatement *statement);
 
     static QueryResult *show_tables();

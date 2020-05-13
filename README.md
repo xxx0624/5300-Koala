@@ -24,6 +24,7 @@ drop table foo
 ```
 
 ## Milestone4
+In this milestone, we support following operations:
 - CREATE INDEX
 - SHOW INDEX
 - DROP INDEX

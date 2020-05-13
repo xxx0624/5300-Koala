@@ -183,12 +183,17 @@ QueryResult *SQLExec::create_table(const CreateStatement *statement) {
         }
         // creat new table & cache new table
         DbRelation& table = tables->get_table(table_name);
-        table.create_if_not_exists();
+        if (statement->ifNotExists)
+            table.create_if_not_exists();
+        else
+            table.create();
     } catch (exception& e){
         if(column_table != nullptr){
-            for(auto const &handle : col_handles){
-                column_table->del(handle);
-            }
+            try{
+                for(auto const &handle : col_handles){
+                    column_table->del(handle);
+                }
+            } catch (...) {}
         }
         tables->del(table_handle);
         throw;
@@ -235,6 +240,12 @@ QueryResult *SQLExec::drop_table(const DropStatement *statement) {
         throw SQLExecError(table_name + " not exist");
     }
 
+    // delete indices of this table
+    IndexNames index_names = indices->get_index_names(table_name);
+    for(Identifier index_name : index_names){
+        drop_index(table_name, index_name);
+    }
+
     DbRelation &table = tables->get_table(table_name);
     DbRelation &column = tables->get_table(Columns::TABLE_NAME);
     
@@ -255,12 +266,17 @@ QueryResult *SQLExec::drop_table(const DropStatement *statement) {
         break;// Delete only one table
     }
     delete handles;
-    return new QueryResult("drop " + table_name);
+    return new QueryResult("dropped " + table_name);
 }
 
 QueryResult *SQLExec::drop_index(const DropStatement *statement){
     Identifier index_name = statement->indexName;
 	Identifier table_name = statement->name;
+    drop_index(table_name, index_name);
+    return new QueryResult("drop index " + index_name);
+}
+
+void SQLExec::drop_index(Identifier table_name, Identifier index_name){
     DbIndex& index = indices->get_index(table_name, index_name);
     // delete physical index
     index.drop();
@@ -273,7 +289,6 @@ QueryResult *SQLExec::drop_index(const DropStatement *statement){
         indices->del(handle);
     }
     delete handles;
-    return new QueryResult("drop index " + index_name);
 }
 
 QueryResult *SQLExec::show(const ShowStatement *statement) {
@@ -324,6 +339,8 @@ QueryResult *SQLExec::show_tables() {
         Value name = row->at("table_name");
         if(name != Value(Tables::TABLE_NAME) && name != Value(Columns::TABLE_NAME) && name != Value(Indices::TABLE_NAME)){
             rows->push_back(row);
+        } else {
+            delete row;
         }
     }
     delete handles;
