@@ -1,14 +1,16 @@
 # 5300-Koala
 DB Relation Manager project for CPSC5300/4300 at Seattle U, Spring 2020
 
+Parts of `Tables` and `Indices` reside in `SQLExec.cpp` and `scheme_tables.cpp`. Most of our work are in `SQLExec.cpp` and all functions related in this milesone are explained well by function name and comments.
+
 ## Milestone3
-In this milestone, we support following operations:
+In this `Milestone3`, we support following operations:
 - CREATE TABLE
 - DROP TABLE
 - SHOW TABLES
 - SHOW COLUMNS
 
-### Example scripts for Milestone3
+### Example scripts for `Milestone3`
 ```
 show tables
 
@@ -24,13 +26,15 @@ drop table foo
 ```
 
 ## Milestone4
-In this milestone, we support following operations:
+In this `Milestone4`, we support following operations:
 - CREATE INDEX
 - SHOW INDEX
 - DROP INDEX
 
-### Example scripts for Milestone4
+### Example scripts for `Milestone4`
 ```
+show columns from _indeices
+
 create table foo (id int, data text, x integer, y integer, z integer)
 
 show tables

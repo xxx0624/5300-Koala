@@ -46,6 +46,13 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
     return out;
 }
 
+/**
+ * Deconstructor for QueryResult
+ *
+ * destory objects
+ *
+ * @param record_id  record to delete
+ */
 QueryResult::~QueryResult() {
     if(column_names != nullptr){
         delete column_names;
@@ -62,6 +69,10 @@ QueryResult::~QueryResult() {
 }
 
 
+/**
+ * exectute the specific statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::execute(const SQLStatement *statement) {
     if(tables == nullptr){
         tables = new Tables();
@@ -86,6 +97,12 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) {
     }
 }
 
+/**
+ * parse column name and column attribute from Column Definition
+ * @param col  pointer to the Column Definition
+ * @param column_name  var address for column name
+ * @param column_attribute var address for column attributes
+ */
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute) {
     column_name = col->name;
     switch (col->type){
@@ -100,6 +117,10 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier &column_
     }
 }
 
+/**
+ * exectute the create table/index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::create(const CreateStatement *statement) {
     switch (statement->type) {
         case CreateStatement::kTable:
@@ -111,6 +132,10 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
     }
 }
 
+/**
+ * exectute the create/index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     Identifier index_name = statement->indexName;
 	Identifier table_name = statement->tableName;
@@ -159,6 +184,10 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
 	return new QueryResult("created index " + index_name);
 }
 
+/**
+ * exectute the create table statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::create_table(const CreateStatement *statement) {
     Identifier table_name = statement->tableName;
 
@@ -201,6 +230,10 @@ QueryResult *SQLExec::create_table(const CreateStatement *statement) {
     return new QueryResult("created table " + table_name);
 }
 
+/**
+ * check if the table exists
+ * @param table_name  name of the table you want to check
+ */
 bool SQLExec::table_exist(Identifier table_name){
     QueryResult *query_result = show_tables();
     bool res = false;
@@ -214,6 +247,10 @@ bool SQLExec::table_exist(Identifier table_name){
     return res;
 }
 
+/**
+ * exectute the drop table/index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::drop(const DropStatement *statement){
     switch(statement->type){
         case DropStatement::kTable:
@@ -225,6 +262,10 @@ QueryResult *SQLExec::drop(const DropStatement *statement){
     }
 }
 
+/**
+ * exectute the drop table statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::drop_table(const DropStatement *statement) {
     Identifier table_name = statement->name;
     if(table_name == Tables::TABLE_NAME){
@@ -269,6 +310,11 @@ QueryResult *SQLExec::drop_table(const DropStatement *statement) {
     return new QueryResult("dropped " + table_name);
 }
 
+
+/**
+ * exectute the drop index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::drop_index(const DropStatement *statement){
     Identifier index_name = statement->indexName;
 	Identifier table_name = statement->name;
@@ -276,6 +322,12 @@ QueryResult *SQLExec::drop_index(const DropStatement *statement){
     return new QueryResult("drop index " + index_name);
 }
 
+
+/**
+ * drop index
+ * @param table_name  the table name of the index
+ * @param index_name  the index name
+ */
 void SQLExec::drop_index(Identifier table_name, Identifier index_name){
     DbIndex& index = indices->get_index(table_name, index_name);
     // delete physical index
@@ -291,6 +343,11 @@ void SQLExec::drop_index(Identifier table_name, Identifier index_name){
     delete handles;
 }
 
+
+/**
+ * exectute the show table/index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::show(const ShowStatement *statement) {
     switch (statement->type){
         case ShowStatement::kTables:
@@ -304,6 +361,11 @@ QueryResult *SQLExec::show(const ShowStatement *statement) {
     }
 }
 
+
+/**
+ * exectute the show index statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::show_index(const ShowStatement *statement) {
     Identifier table_name = statement->tableName;
     if(!table_exist(table_name)){
@@ -327,6 +389,11 @@ QueryResult *SQLExec::show_index(const ShowStatement *statement) {
         "successfully fetch " + to_string(rows->size()) + " rows");
 }
 
+
+/**
+ * exectute the show table statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::show_tables() {
     ColumnNames *col_names = new ColumnNames();
     ColumnAttributes *col_attrs = new ColumnAttributes();
@@ -348,6 +415,10 @@ QueryResult *SQLExec::show_tables() {
         "successfully fetch " + to_string(rows->size()) + " tables");
 }
 
+/**
+ * exectute the show column statement
+ * @param statement  pointer to the statement
+ */
 QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
     ColumnNames *col_names = new ColumnNames();
     ColumnAttributes *col_attrs = new ColumnAttributes();
