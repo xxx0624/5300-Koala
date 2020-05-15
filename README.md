@@ -45,3 +45,6 @@ show index from foo
 
 drop index fx from foo
 ```
+
+## Videos
+https://seattleu.instructuremedia.com/embed/09bb854c-bdc6-4fe1-8919-2b40b1af7795
